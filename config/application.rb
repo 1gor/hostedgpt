@@ -8,6 +8,7 @@ require_relative "../lib/false_class"
 require_relative "../lib/true_class"
 require_relative "../lib/nil_class"
 require_relative "../app/models/feature"
+require_relative "../app/models/setting"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -18,7 +19,7 @@ module HostedGPT
     config.options = config_for(:options)
 
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 7.1
+    config.load_defaults 7.2
 
     # To remove in 2025. This allows migration db/migrate/20240415134849_encrypt_keys.rb to encrypt existing plaintext keys
     config.active_record.encryption.support_unencrypted_data = true

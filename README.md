@@ -27,6 +27,7 @@ This project is led by an experienced rails developer, but I'm actively looking 
   - [Troubleshooting Render](#troubleshooting-render)
 - [Deploy the app on Fly.io](#deploy-the-app-on-flyio)
 - [Deploy the app on Heroku](#deploy-the-app-on-heroku)
+- [Deploy on your own server](#deploy-on-your-own-server)
 - [Configure optional features](#configure-optional-features)
   - [Give assistant access to your Google apps](#configuring-google-tools)
   - [Authentication](#authentication)
@@ -34,8 +35,8 @@ This project is led by an experienced rails developer, but I'm actively looking 
     - [Google OAuth authentication](#google-oauth-authentication)
     - [HTTP header authentication](#http-header-authentication)
 - [Contribute as a developer](#contribute-as-a-developer)
-  - [Setting up development](#setting-up-development)
-    - [Alternatively, you can set up your development environment locally:](#alternatively-you-can-set-up-your-development-environment-locally)
+  - [Running locally](#Running-locally)
+    - [Alternatively, you can skip Docker:](#alternatively-you-can-set-skip-docker)
   - [Running tests](#running-tests)
 - [Understanding the Docker configuration](#understanding-the-docker-configuration)
 - [Changelog](#changelog)
@@ -80,18 +81,19 @@ If you encountered an error while waiting for the services to be deployed on Ren
 
 Deploying to Fly.io is another great option. It's not quite one-click like Render and it's not 100% free. But we've made the configuration really easy for you and the cost should be about $2 per month, and Render costs $7 per month after 90 days of free service so Fly is actually less expensive over the long term.
 
-1. Click Fork > Create New Fork at the top of this repository. Pull your forked repository down to your computer (the usual git clone ...).
+1. Click Fork > Create New Fork at the top of this repository. **Pull your forked repository down to your computer (the usual git clone ...)**.
+1. Go into the directory you just created with your git clone and run `bundle`
 1. Install the Fly command-line tool on Mac with `brew install flyctl` otherwise `curl -L https://fly.io/install.sh | sh` ([view instructions](https://fly.io/docs/hands-on/install-flyctl/))
-1. Think of an internal Fly name for your app, it has to be unique to all of Fly, and then in the root directory of the repository you pulled down, run `fly launch --build-only --copy-config --name=APP_NAME_YOU_CHOSE`
+1. Think of an internal Fly name for your app, it has to be unique to all of Fly. You'll use this **APP_NAME** three times in the steps below. First, in the root directory of the repository you pulled down, run `fly launch --build-only --copy-config --name=APP_NAME`
 
    - Say "Yes" when it asks if you want to tweak these settings
 
-1. When it opens your browser, change the Database to `Fly Postgres` with a unique name such as `[APP_NAME]-db` and you can set the configuration to `Development`.
+1. When it opens your browser, (i) change the Database to `Fly Automated Postgres`, (ii) set the name to be `[APP_NAME]-db`, (iii) and you can set the configuration to `Development`.
 1. Click `Confirm Settings` at the bottom of the page and close the browser.
-1. The app will do a bunch of build steps and then return to the command line. Scroll through the output and save the Postgres username & password somewhere as you'll never be able to see those again.
-1. Next run `bin/rails db:setup_encryption[true]`. This will initialize some private keys for your app and send them to Fly.
+1. The app will do a bunch of build steps and then return to the command line. Scroll through the output and **save the Postgres username & password somewhere as you'll never be able to see those again**.
+1. Next run `bin/rails db:setup_encryption[true]`. This will initialize some private keys for your app and send them to Fly. (If you get an error you may have forgotten to run `bundle`).
 1. Run `fly deploy --ha=false`
-1. Assuming you chose `Development` as the DB size in the step above, now you should run `bin/rails db:fly[APP_NAME_FROM_EARLIER,swap,512]` This will increase the swap on your database machine so that it doesn't crash.
+1. Assuming you chose `Development` as the DB size in the step above, now you should run `bin/rails db:fly[APP_NAME,swap,512]` This will increase the swap on your database machine so that it doesn't crash since the Development database has less ram.
 
 You may want to read about [configuring optional features](#configure-optional-features).
 
@@ -109,6 +111,47 @@ Eligible students can apply for Heroku platform credits through [Heroku for GitH
    [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://www.heroku.com/deploy)
 
 You may want to read about [configuring optional features](#configure-optional-features).
+
+## Deploy on your own server
+
+There are only two services that need to be running for this app to work: the Puma web server and a Postgres database.
+
+First, ensure your Postgres server is running and verify your connection string using `psql`, for example:
+
+Example:
+```
+psql postgres://app:secret@postgres/hostedgpt_production
+```
+
+Take this DB connection string and start your rails server like this:
+
+```
+RAILS_ENV=production RUN_SOLID_QUEUE_IN_PUMA=true DATABASE_URL=postgres://string-you-verified-above rails s -p 8081
+```
+
+**Note:** You can change the port 8081 to anything you want.
+
+If you are running a proxy such as nginx, be aware that the app is running http and websockets (ws). Here is an example of what your configuration might look like in order to proxy both of those:
+
+```
+<VirtualHost *:443>
+  ServerName chat.${maindomain}
+  ServerAlias chat.${secondarydomain}
+  ProxyPreserveHost On
+  ProxyPass / http://localhost:8081/
+  ProxyPassReverse / http://localhost:8081/
+  RequestHeader set X-Forwarded-Proto "https"
+  <Location /cable>
+    ProxyPreserveHost On
+    ProxyPass ws://localhost:8081/cable
+    ProxyPassReverse ws://localhost:8081/cable
+  </Location>
+
+  Include /etc/letsencrypt/options-ssl-apache.conf
+  SSLCertificateFile /etc/letsencrypt/live/chat.${maindomain}/fullchain.pem
+  SSLCertificateKeyFile /etc/letsencrypt/live/chat.${maindomain}/privkey.pem
+</VirtualHost>
+```
 
 ## Configure optional features
 
@@ -232,9 +275,9 @@ HTTP header authentication is an alternative method to authenticate users based 
 
 We welcome contributors! After you get your development environment setup, review the list of Issues. We organize the issues into Milestones and are currently wrapping up v0.7 and starting 0.8 [View 0.8 Milestone](https://github.com/allyourbot/hostedgpt/milestone/8). Look for any issues tagged with **Good first issue** and add a comment so we know you're working on it.
 
-### Setting up development
+### Running locally
 
-The easiest way to get up and running is to use the provided docker compose workflow. The only things you need installed on your computer are Docker and Git.
+The easiest way to get up and running is to use the provided Docker compose workflow. The only things you need installed on your computer are Docker and Git.
 
 1. Make sure you have [Docker Desktop](https://docs.docker.com/desktop/) installed and running
 1. Clone your fork `git clone [repository url]`
@@ -250,18 +293,19 @@ The easiest way to get up and running is to use the provided docker compose work
 Every time you pull new changes down, kill docker (if it's running) and re-run:
 `docker compose up --build` This will ensure your local app picks up changes to Gemfile, migrations, and docker config.
 
-#### Alternatively, you can set up your development environment locally:
+#### Alternatively, you can skip Docker
 
 HostedGPT requires these services to be running:
 
-- Postgres ([installation instructions](https://www.postgresql.org/download/))
+- Postgres (`brew install postgresql@16` or other [install instructions](https://www.postgresql.org/download/))
 - rbenv ([installation instructions](https://github.com/rbenv/rbenv))
 - ImageMagick (`brew install imagemagick` should work on Mac )
 
 1. `cd` into your local repository clone
 1. `rbenv install` to install the correct ruby version (it reads the .ruby-version in the repo)
-1. `bin/dev` starts up all the services, installs gems, and inits database (don't run **db:setup** as it will not configure encryption properly)
-1. Open [http://localhost:3000](http://localhost:3000) and register as a new user
+1. Do NOT run db:setup as it will not configure encryption properly. Proceed to the next step and it will automatically configure the database.
+1. `bin/dev` starts up all the services, installs gems, and handles db. Note: The app should automatically configure a database, but if you get any database errors or want to change the default configuration, set the environment variable DATABASE_URL=postgres://username:password@localhost:5432/hostedgpt_development (replacing username, password, hostedgpt_development with your database name, and 5432 with your database port number).
+1. Open [http://localhost:3000](http://localhost:3000) and register as a new user.
 1. `bin/rails test` and `bin/rails test:system` to run the comprehensive tests
 1. The project root has an `.editorconfig` file to help eliminate whitespace differences in pull requests. It's nice if you install an extension in your IDE to utilize this (e.g. VS Code has "EditorConfig for VS Code").
 1. If you want a few fake users and a bunch of conversations and other data pre-populated in the database, you can load fixtures into the development database. This can be helpful, for example, if you want to test a migration and save yourself the time manually creating a bunch of data: `bin/rails db:fixtures:load`

@@ -123,7 +123,7 @@ class MessageTest < ActiveSupport::TestCase
 
     assert_raises ActiveRecord::RecordInvalid do
       Message.create!(
-        assistant: assistant,
+        assistant:,
         conversation: conversation_owned_by_someone_else,
         content_text: "This should fail"
       )
@@ -137,8 +137,8 @@ class MessageTest < ActiveSupport::TestCase
 
     assert_nothing_raised do
       message = Message.create!(
-        assistant: assistant,
-        conversation: conversation,
+        assistant:,
+        conversation:,
         content_text: "This works since Conversation is owned by Current.user"
       )
       assert_equal Current.user, message.conversation.user
@@ -154,8 +154,8 @@ class MessageTest < ActiveSupport::TestCase
 
     assert_nothing_raised do
       message = Message.create!(
-        assistant: assistant,
-        conversation: conversation,
+        assistant:,
+        conversation:,
         content_text: "This works since Current.user not set"
       )
     end
@@ -240,5 +240,21 @@ class MessageTest < ActiveSupport::TestCase
     messages(:hear_me).destroy
 
     assert_nil memory.reload.message
+  end
+
+  test "modifying input_token_count updates input_token_cost" do
+    message = messages(:hear_me)
+    message.update!(input_token_count: 5, output_token_cost: 1)
+    assert_equal 5 * message.assistant.language_model.input_token_cost_cents, message.input_token_cost
+    # make sure output_token_cost is not changed
+    assert_equal 1, message.output_token_cost
+  end
+
+  test "modifying output_token_count updates output_token_cost" do
+    message = messages(:hear_me)
+    message.update!(output_token_count: 5, input_token_cost: 1)
+    assert_equal 5 * message.assistant.language_model.output_token_cost_cents, message.output_token_cost
+    # make sure input_token_cost is not changed
+    assert_equal 1, message.input_token_cost
   end
 end

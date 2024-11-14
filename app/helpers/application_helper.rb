@@ -70,18 +70,22 @@ module ApplicationHelper
   end
 
   def meta_tag(name, content)
-    tag.meta(name: name, content: content)
+    tag.meta(name:, content:)
   end
 
   def charset_tag(charset)
-    tag.meta(charset: charset)
+    tag.meta(charset:)
   end
 
   def viewport_tag(content)
-    tag.meta(name: "viewport", content: content)
+    tag.meta(name: "viewport", content:)
   end
 
   def n_a_if_blank(value, n_a = "Not Available")
     value.blank? ? n_a : value.to_s
+  end
+
+  def to_dollars(cents, precision: 2)
+    number_to_currency(cents / 100.0, precision:)
   end
 end
