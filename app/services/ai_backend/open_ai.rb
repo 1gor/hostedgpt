@@ -14,12 +14,35 @@ class AIBackend::OpenAI < AIBackend
     end
   end
 
+  def self.test_execute(url, token, api_name)
+    if Rails.env.test?
+      client = ::TestClient::OpenAI.new(
+        access_token: token,
+        uri_base: url
+      )
+      response = client.send(:chat, ** {parameters: {model: api_name, messages: [{ role: "user", content: "Hello!" }]}})
+    else
+      Rails.logger.info "Connecting to OpenAI API server at #{url} with access token of length #{token.to_s.length}"
+      client = ::OpenAI::Client.new(
+        access_token: token,
+        uri_base: url
+      )
+
+      Rails.logger.info "Testing using model #{api_name}"
+      response = client.chat(parameters: {model: api_name, messages: [{ role: "user", content: "Hello!" }]})
+    end
+
+    response.dig("choices", 0, "message", "content")
+  rescue ::Faraday::Error => e
+    "Error: #{e.message}"
+  end
+
   def initialize(user, assistant, conversation = nil, message = nil)
     super(user, assistant, conversation, message)
     begin
       raise ::OpenAI::ConfigurationError if assistant.api_service.requires_token? && assistant.api_service.effective_token.blank?
       Rails.logger.info "Connecting to OpenAI API server at #{assistant.api_service.url} with access token of length #{assistant.api_service.effective_token.to_s.length}"
-      @client = self.class.client.new(uri_base: assistant.api_service.url, access_token: assistant.api_service.effective_token)
+      @client = self.class.client.new(uri_base: assistant.api_service.url, access_token: assistant.api_service.effective_token, api_version: "")
     rescue ::Faraday::UnauthorizedError => e
       raise ::OpenAI::ConfigurationError
     end
@@ -80,8 +103,8 @@ class AIBackend::OpenAI < AIBackend
     rescue ::Faraday::UnauthorizedError => e
       raise OpenAI::ConfigurationError
     rescue => e
-      puts "\nUnhandled error in AIBackend::OpenAI response handler: #{e.message}"
-      puts e.backtrace.join("\n")
+      Rails.logger.info "\nUnhandled error in AIBackend::OpenAI response handler: #{e.message}"
+      Rails.logger.info e.backtrace.join("\n")
     end
   end
 
@@ -98,7 +121,7 @@ class AIBackend::OpenAI < AIBackend
 
         content_with_images = [{ type: "text", text: message.content_text }]
         content_with_images += message.documents.collect do |document|
-          { type: "image_url", image_url: { url: document.file_data_url(:large) }}
+          { type: "image_url", image_url: { url: document.image_url(:large) }}
         end
 
         {
@@ -110,8 +133,8 @@ class AIBackend::OpenAI < AIBackend
         {
           role: message.role,
           name: message.name_for_api,
-          content: message.content_text,
-          tool_calls: message.content_tool_calls, # only for some assistant messages
+          content: (JSON.parse(message.content_text).except("message_to_user").to_json rescue message.content_text),
+          tool_calls: message.assistant? ? message.content_tool_calls : nil, # only for some assistant messages
           tool_call_id: message.tool_call_id,     # only for tool messages
         }.compact.except( message.content_tool_calls.blank? && :tool_calls )
       end

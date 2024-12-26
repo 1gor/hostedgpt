@@ -13,7 +13,6 @@ gem "turbo-rails", "~> 2.0.5"
 gem "stimulus-rails", "~> 1.3.3"
 gem "tailwindcss-rails", "~> 2.7.2"
 gem "rack-cors"
-gem "ostruct"
 
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 # gem "jbuilder"
@@ -41,16 +40,19 @@ gem "ffi", "~> 1.15.5" # explicitly requiring 15.5 until this is resolved: https
 gem "amatch", "~> 0.4.1" # enables fuzzy comparison of strings, a tool uses this
 gem "rails_heroicon", "~> 2.2.0"
 gem "ruby-openai", "~> 7.0.1"
-gem "anthropic", "~> 0.1.0"
+gem "anthropic", "~> 0.1.0" # TODO update to the latest version
+gem "gemini-ai", "~> 4.2.0"
 gem "tiktoken_ruby", "~> 0.0.9"
 gem "solid_queue", "~> 1.0.0"
 gem "name_of_person"
 gem "actioncable-enhanced-postgresql-adapter" # longer paylaods w/ postgresql actioncable
 gem "aws-sdk-s3", require: false
 gem "postmark-rails"
+gem "ostruct"
 
 gem "omniauth", "~> 2.1"
 gem "omniauth-google-oauth2", "~> 1.1"
+gem "omniauth-microsoft_graph", "~> 2.0"
 gem "omniauth-rails_csrf_protection", "~> 1.0.2"
 
 group :development, :test do
@@ -85,4 +87,6 @@ group :test do
   gem "selenium-webdriver"
   gem "minitest-stub_any_instance"
   gem "rails-controller-testing"
+  gem "minitest-retry"
+  gem "webmock"
 end

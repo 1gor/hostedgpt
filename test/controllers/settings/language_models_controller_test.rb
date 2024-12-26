@@ -10,7 +10,7 @@ class Settings::LanguageModelsControllerTest < ActionDispatch::IntegrationTest
   test "should get index for user" do
     get settings_language_models_url
     assert_response :success
-    assert_select "table#language-models tbody tr", count: 18
+    assert_select "table#language-models tbody tr", count: @user.language_models.count
     assert_select "p a", "Add New"
   end
 
@@ -68,7 +68,7 @@ class Settings::LanguageModelsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "form" do
       assert_select 'input[name="language_model[supports_tools]"]'
-      assert_select 'input[name="language_model[supports_tools]"][checked="checked"]', false # Not checked by default, from schema
+      assert_select 'input[name="language_model[supports_tools]"][checked="checked"]', false, "Checkbox should default to false within DB"
     end
   end
 
@@ -172,5 +172,39 @@ class Settings::LanguageModelsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to settings_language_models_url
     assert flash[:notice].present?, "There should have been a success message"
     refute flash[:alert].present?, "There should NOT have been an error message"
+  end
+
+  test "create should not have supports_system_message checkbox" do
+    get new_settings_language_model_url
+    assert_response :success
+    assert_select "form" do
+      assert_select 'input[name="language_model[supports_system_message]"]'
+      assert_select 'input[name="language_model[supports_system_message]"][checked="checked"]', false, "Checkbox should default to false within DB"
+    end
+  end
+
+  test "edit should have supports_system_message checkbox checked" do
+    get edit_settings_language_model_url(@language_model)
+    assert_response :success
+    assert_select "form" do
+      assert_select 'input[name="language_model[supports_system_message]"][checked="checked"]'
+    end
+  end
+
+  test "edit should have supports_system_message checkbox unchecked" do
+    get edit_settings_language_model_url(language_models(:guanaco))
+    assert_response :success
+    assert_select "form" do
+      assert_select 'input[name="language_model[supports_system_message]"]'
+      assert_select 'input[name="language_model[supports_system_message]"][checked="checked"]', false
+    end
+  end
+
+  test "test should return success and a message" do
+    TestClient::OpenAI.stub :text, "Success." do
+      get settings_language_model_test_url(format: :turbo_stream, language_model_id: language_models(:guanaco).id, model: "gpt-4o")
+      assert_response :success
+      assert_contains_text "div#test_result", "Success."
+    end
   end
 end
