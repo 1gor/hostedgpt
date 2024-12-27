@@ -1,0 +1,26 @@
+diff --git a/app/services/fly.rb b/app/services/fly.rb
+index b384d1e..cd98133 100644
+--- a/app/services/fly.rb
++++ b/app/services/fly.rb
+@@ -1,6 +1,8 @@
++# frozen_string_literal: true
++
+ class Fly < SDK
+   def change_db_swap(app:, swap:)
+-    app_name = app+"-db"
++    app_name = app
+     unless swap.is_a?(Integer) || swap.to_i.to_s == swap.to_s
+       Rails.logger.info "Expected an integer for swap such as 512 but it was '#{swap}'. Aborting."
+       return
+diff --git a/bin/rails b/bin/rails
+index efc0377..8ca7026 100755
+--- a/bin/rails
++++ b/bin/rails
+@@ -1,4 +1,7 @@
+ #!/usr/bin/env ruby
++require 'openssl'
++OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
++
+ APP_PATH = File.expand_path("../config/application", __dir__)
+ require_relative "../config/boot"
+ require "rails/commands"
