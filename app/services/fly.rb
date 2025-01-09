@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 class Fly < SDK
   def change_db_swap(app:, swap:)
-    app_name = app+"-db"
+    app_name = app
     unless swap.is_a?(Integer) || swap.to_i.to_s == swap.to_s
       Rails.logger.info "Expected an integer for swap such as 512 but it was '#{swap}'. Aborting."
       return
